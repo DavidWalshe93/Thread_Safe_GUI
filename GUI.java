@@ -3,6 +3,7 @@ import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.List;
 
 public class GUI implements ActionListener {
     // Class implements three different types of listener.
@@ -91,12 +92,23 @@ public class GUI implements ActionListener {
             @Override
             protected Integer doInBackground() throws Exception {
                 publish("Iterating");
+                setProgress(0);
                 for (int i = 0; i < 10; i++) {
+                    setProgress(i*10);
                     Thread.sleep(1000);
                     publish("" + i);
                 }
-
+                setProgress(100);
+                publish("Complete");
                 return 1;
+            }
+
+            @Override
+            protected void process(List<String> chunks) {
+                for ( String lines :chunks ) {
+                    txtArea.append(lines + "\r\n");
+                }
+                progressBar.setValue(worker.getProgress());
             }
 
             @Override
