@@ -2,6 +2,7 @@ import javafx.scene.control.ProgressBar;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
+import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -9,11 +10,11 @@ import java.util.List;
 
 public class GUI implements ActionListener {
     // Class implements three different types of listener.
-
     JTextArea txtArea;
     JButton runBtn;
     JButton cancelBtn;
     JProgressBar progressBar;
+    JLabel timeStamp;
 
 
     public SwingWorker<Integer, String> worker;
@@ -47,6 +48,8 @@ public class GUI implements ActionListener {
         txtArea.setEditable(false);
         txtArea.setLineWrap(true);
         txtArea.setWrapStyleWord(true);
+        DefaultCaret caret = (DefaultCaret)txtArea.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
 
 
         // We create the ScrollPane and instantiate it with the TextArea as an argument
@@ -57,7 +60,7 @@ public class GUI implements ActionListener {
         // We then set the preferred size of the scrollpane.
         //area.setPreferredSize(new Dimension(300, 200));
 
-
+        timeStamp = new JLabel("Time Elapsed: ");
         runBtn = new JButton("Run");
         runBtn.addActionListener(this);
         cancelBtn = new JButton("Cancel");
@@ -72,6 +75,7 @@ public class GUI implements ActionListener {
 
 
         totalGUI.add(area, "span, push, grow");
+        totalGUI.add(timeStamp, "span, grow");
         totalGUI.add(progressBar, "span, grow");
         totalGUI.add(runBtn, "span, grow, split");
         totalGUI.add(cancelBtn, "span, grow, split");
@@ -84,9 +88,11 @@ public class GUI implements ActionListener {
     // For the Action Events.
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == runBtn) {
-            Run("RUN");
+            long startTime = System.currentTimeMillis();
+            Run(startTime);
             runBtn.setEnabled(false);
             cancelBtn.setEnabled(true);
+
         } else if (e.getSource() == cancelBtn) {
             worker.cancel(true);
             runBtn.setEnabled(true);
@@ -96,10 +102,18 @@ public class GUI implements ActionListener {
         }
     }
 
+    private static String timeFormatter(long milliseconds){
+        int seconds = (int) (milliseconds / 1000) % 60 ;
+        int minutes = (int) ((milliseconds / (1000*60)) % 60);
+        int hours   = (int) ((milliseconds / (1000*60*60)) % 24);
+        milliseconds %= 1000;
+        String timeFormattedString = hours + ":" + minutes + ":" + seconds + "." + milliseconds;
+        return timeFormattedString;
+    }
+
     // This rewrites the story depending on the actions so far in the various
     // widgets then re-sends the story to the TextArea.
-    private void Run(String str) {
-        String story = str;
+    private void Run(long time) {
 
         worker = new SwingWorker<Integer, String>() {
             @Override
@@ -107,48 +121,39 @@ public class GUI implements ActionListener {
 
                 LineNumberReader lnr = new LineNumberReader(new FileReader(new File("C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\big.txt")));
                 lnr.skip(Long.MAX_VALUE);
-                System.out.println(lnr.getLineNumber() + 1); //Add 1 because line index starts at 0
-                int lineCount = lnr.getLineNumber() + 1;
+                float lineCount = lnr.getLineNumber() + 1;
                 // Finally, the LineNumberReader object should be closed to prevent resource leak
                 lnr.close();
+
 
                 try ( BufferedReader br = new BufferedReader(new FileReader(new File("C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\big.txt"))))
                 {
                     String line;
+                    StringBuilder sb = new StringBuilder();
                     int count = 0;
                     while((line = br.readLine()) != null)
                     {
                         count++;
-                        publish(line);
-                        setProgress(count/lineCount * 100);
+                        sb.append(count + "- " + line + "\r\n");
+                        setProgress(Math.round((count/lineCount) * 100f));
                     }
+                    publish(sb.toString());
                 } catch ( IOException ioe )
                 {
                     ioe.getMessage();
                 }
-
-
-//                publish("Iterating");
-//                setProgress(0);
-//                for (int i = 0; i < 10; i++) {
-//                    if (isCancelled()) {
-//                        return 0;
-//                    }
-//                    setProgress(i * 10);
-//                    Thread.sleep(1000);
-//                    publish("" + i);
-//                }
-//                setProgress(100);
-//                publish("Complete");
                 return 1;
             }
 
             @Override
             protected void process(List<String> chunks) {
+                System.out.println(chunks.size());
                 for (String lines : chunks) {
                     txtArea.append(lines + "\r\n");
                 }
                 int prog = worker.getProgress();
+                long timeElapsed = System.currentTimeMillis() - time;
+                timeStamp.setText("Time Elapsed: " + GUI.timeFormatter(timeElapsed));
                 progressBar.setValue(prog);
                 progressBar.setString("Progress: " + prog + "%");
             }
@@ -166,7 +171,6 @@ public class GUI implements ActionListener {
             }
         };
         worker.execute();
-        txtArea.setText(story);
     }
 }
 
