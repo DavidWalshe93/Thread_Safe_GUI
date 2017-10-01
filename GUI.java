@@ -6,7 +6,16 @@ import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class GUI implements ActionListener {
     // Class implements three different types of listener.
@@ -15,9 +24,11 @@ public class GUI implements ActionListener {
     JButton cancelBtn;
     JProgressBar progressBar;
     JLabel timeStamp;
+    JButton zipBtn;
 
 
     public SwingWorker<Integer, String> worker;
+    public SwingWorker<Integer, String> workerZip;
 
     public static void createAndShowGUI() {
 
@@ -61,8 +72,10 @@ public class GUI implements ActionListener {
         //area.setPreferredSize(new Dimension(300, 200));
 
         timeStamp = new JLabel("Time Elapsed: ");
-        runBtn = new JButton("Run");
+        runBtn = new JButton("Load");
         runBtn.addActionListener(this);
+        zipBtn = new JButton("Zip");
+        zipBtn.addActionListener(this);
         cancelBtn = new JButton("Cancel");
         cancelBtn.addActionListener(this);
         cancelBtn.setEnabled(false);
@@ -78,7 +91,9 @@ public class GUI implements ActionListener {
         totalGUI.add(timeStamp, "span, grow");
         totalGUI.add(progressBar, "span, grow");
         totalGUI.add(runBtn, "span, grow, split");
+        totalGUI.add(zipBtn, "span, grow, split");
         totalGUI.add(cancelBtn, "span, grow, split");
+
 
 
         totalGUI.setOpaque(true);
@@ -89,6 +104,9 @@ public class GUI implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == runBtn) {
             long startTime = System.currentTimeMillis();
+            txtArea.setText("");
+            progressBar.setValue(0);
+            progressBar.setString("Progress: 0%");
             Run(startTime);
             runBtn.setEnabled(false);
             cancelBtn.setEnabled(true);
@@ -99,6 +117,9 @@ public class GUI implements ActionListener {
             cancelBtn.setEnabled(false);
             progressBar.setValue(0);
             progressBar.setString("Progress: 0%");
+        } else if(e.getSource() == zipBtn) {
+            txtArea.setText("");
+            Zip(System.currentTimeMillis());
         }
     }
 
@@ -111,6 +132,87 @@ public class GUI implements ActionListener {
         return timeFormattedString;
     }
 
+    private void Zip(long time)
+    {
+
+        workerZip = new SwingWorker<Integer, String>() {
+            @Override
+            protected Integer doInBackground() throws Exception {
+                File f = new File("C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\big.zip");
+
+                try(
+                        ZipOutputStream out = new ZipOutputStream(new FileOutputStream(f));
+                        BufferedReader br = new BufferedReader(new FileReader(new File("C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\big.txt")))
+                )
+                {
+                    ZipEntry e = new ZipEntry("big.txt");
+                    out.putNextEntry(e);
+
+                    StringBuilder sb = new StringBuilder();
+                    String line = "";
+                    while((line = br.readLine()) != null)
+                    {
+                        sb.append(line + "\r\n");
+                    }
+                    byte[] data = sb.toString().getBytes();
+                    out.write(data, 0, data.length);
+                    out.closeEntry();
+                    out.close();
+
+                }catch (Exception e)
+                {
+                    e.getMessage();
+                }
+                return 1;
+            }
+
+            @Override
+            protected void done() {
+                txtArea.setText("Zip Complete");
+                Path file = Paths.get("C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\big.txt");
+                Path zipFile = Paths.get("C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\big.zip");
+
+                BasicFileAttributes fileAttr = null;
+                BasicFileAttributes zipFileAttr = null;
+                try {
+
+                    fileAttr = Files.readAttributes(file, BasicFileAttributes.class);
+                    zipFileAttr = Files.readAttributes(zipFile, BasicFileAttributes.class);
+                } catch (Exception e) {
+                    e.getMessage();
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append("########################################################\r\n");
+                sb.append("Zip Information\r\n");
+                sb.append("########################################################\r\n");
+                sb.append("Creation Time \"big.zip\"\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append(">\t" + zipFileAttr.lastModifiedTime() + "\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append("\"big.txt\" Size\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append(">\t" + fileAttr.size() + " B\r\n");
+                sb.append(">\t" + (float)fileAttr.size()/(1024*1024) + " MB\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append("\"big.zip\" Size\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append(">\t" + zipFileAttr.size() + " B\r\n");
+                sb.append(">\t" + (float)zipFileAttr.size()/(1024*1024) + " MB\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append("Compression Ratio\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append(">\t" + (float)zipFileAttr.size()/(float)fileAttr.size() + "\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append("File Size Reduction\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                sb.append(">\t" + (100 - ((float)zipFileAttr.size()/(float)fileAttr.size())*100) + "%\r\n");
+                sb.append("--------------------------------------------------------------------------------------------------\r\n");
+                txtArea.setText(sb.toString());
+            }
+        };
+        workerZip.execute();
+
+    }
     // This rewrites the story depending on the actions so far in the various
     // widgets then re-sends the story to the TextArea.
     private void Run(long time) {
@@ -147,7 +249,6 @@ public class GUI implements ActionListener {
 
             @Override
             protected void process(List<String> chunks) {
-                System.out.println(chunks.size());
                 for (String lines : chunks) {
                     txtArea.append(lines + "\r\n");
                 }
