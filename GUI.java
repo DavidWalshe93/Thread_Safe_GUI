@@ -64,7 +64,6 @@ public class GUI implements ActionListener {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
                 logger.entering(CLASS_NAME, "");
-                System.out.println("Executing Perl Log Formatter");
                 Process proc;
                 BufferedReader br;
                 try{
@@ -73,6 +72,7 @@ public class GUI implements ActionListener {
                         path = path.replace("\\", "/");
                     }
                     path += "/GUI.log";
+                    logger.log(Level.INFO, "Executing Perl Formatting Script on GUI Exit");
                     proc = Runtime.getRuntime().exec("Perl C:\\Users\\David\\Desktop\\Client-Server\\Assignment_1_Thread_Safe_GUI\\src\\Parse.pl " + path);
                 } catch (Exception e) {
                     logger.log(Level.SEVERE, "Execption: " + e.getMessage());
@@ -320,6 +320,9 @@ public class GUI implements ActionListener {
                 sb.append(">\t" + (100 - ((float) zipFileAttr.size() / (float) fileAttr.size()) * 100) + "%\r\n");
                 sb.append("--------------------------------------------------------------------------------------------------\r\n");
                 txtArea.setText(sb.toString());
+                long timeElapsed = System.currentTimeMillis() - time;
+                timeStamp.setText("File Zip Time: " + GUI.timeFormatter(timeElapsed));
+                logger.log(Level.INFO, "File Zip Time: " + GUI.timeFormatter(timeElapsed));
                 logger.exiting(CLASS_NAME, "Zip->SwingWorker->done");
             }
         };
@@ -367,6 +370,7 @@ public class GUI implements ActionListener {
                 int prog = worker.getProgress();
                 long timeElapsed = System.currentTimeMillis() - time;
                 timeStamp.setText("File Load Time: " + GUI.timeFormatter(timeElapsed));
+                logger.log(Level.INFO, "File Load Time: " + GUI.timeFormatter(timeElapsed));
                 progressBar.setValue(prog);
                 progressBar.setString("Progress: " + prog + "%");
                 logger.exiting(CLASS_NAME, "Load->SwingWorker->process");
